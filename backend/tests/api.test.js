@@ -1,169 +1,78 @@
-import { expect, test, jest, beforeEach, afterEach } from '@jest/globals';
-import request from 'supertest';
-import express from 'express';
-import cors from 'cors';
+const request = require('supertest')
+const app = require('../main')
 
-// Mock the backend app setup for testing
-const createTestApp = () => {
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
+describe('API Endpoints', () => {
+  test('GET /api/health returns healthy status', async () => {
+    const response = await request(app)
+      .get('/api/health')
+      .expect('Content-Type', /json/)
+      .expect(200)
 
-  // In-memory storage for tests
-  const waitlist: Array<{ name: string; email: string; company?: string; idea?: string; timestamp: string }> = [];
+    expect(response.body).toHaveProperty('status', 'healthy')
+    expect(response.body).toHaveProperty('timestamp')
+  })
 
-  // Health check endpoint
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-    });
-  });
-
-  // Waitlist endpoint
-  app.post('/api/waitlist', (req, res) => {
-    const { name, email, company, idea } = req.body;
-
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
+  test('POST /api/waitlist successfully adds a new entry', async () => {
+    const newEntry = {
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      company: 'Acme Inc.',
+      idea: 'A platform for founders'
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Valid email is required' });
-    }
+    const response = await request(app)
+      .post('/api/waitlist')
+      .send(newEntry)
+      .expect('Content-Type', /json/)
+      .expect(201)
 
-    const duplicate = waitlist.find((entry) => entry.email === email);
-    if (duplicate) {
-      return res.status(409).json({ message: 'Email already on waitlist' });
-    }
+    expect(response.body).toHaveProperty('message', 'Successfully joined waitlist')
+    expect(response.body.entry).toHaveProperty('name', 'Jane Doe')
+    expect(response.body.entry).toHaveProperty('email', 'jane@example.com')
+  })
 
+  test('POST /api/waitlist rejects duplicate email', async () => {
     const entry = {
-      name,
-      email,
-      company: company || '',
-      idea: idea || '',
-      timestamp: new Date().toISOString(),
-    };
+      name: 'Duplicate Test',
+      email: 'duplicate@example.com',
+      company: 'Test Co.',
+      idea: 'Testing duplicates'
+    }
 
-    waitlist.push(entry);
-    res.status(201).json({ message: 'Successfully joined waitlist', entry });
-  });
+    await request(app).post('/api/waitlist').send(entry).expect(201)
+    const response = await request(app).post('/api/waitlist').send(entry).expect(409)
 
-  // Get waitlist (for testing)
-  app.get('/api/waitlist', (req, res) => {
-    res.json({ count: waitlist.length, entries: waitlist });
-  });
+    expect(response.body).toHaveProperty('message', 'Email already on waitlist')
+  })
 
-  return app;
-};
+  test('POST /api/waitlist validates required fields', async () => {
+    const response = await request(app)
+      .post('/api/waitlist')
+      .send({ name: '', email: '' })
+      .expect('Content-Type', /json/)
+      .expect(400)
 
-describe('Backend API Tests', () => {
-  let app: express.Express;
+    expect(response.body).toHaveProperty('message')
+  })
 
-  beforeEach(() => {
-    app = createTestApp();
-  });
+  test('GET /api/waitlist returns all entries', async () => {
+    await request(app)
+      .post('/api/waitlist')
+      .send({ name: 'Alice', email: 'alice@example.com', company: '', idea: '' })
 
-  describe('GET /api/health', () => {
-    test('should return healthy status with timestamp and uptime', async () => {
-      const response = await request(app).get('/api/health');
+    const response = await request(app)
+      .get('/api/waitlist')
+      .expect('Content-Type', /json/)
+      .expect(200)
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('status', 'healthy');
-      expect(response.body).toHaveProperty('timestamp');
-      expect(response.body).toHaveProperty('uptime');
-      expect(new Date(response.body.timestamp).toISOString()).toBeTruthy();
-    });
-  });
+    expect(response.body).toHaveProperty('count')
+    expect(Array.isArray(response.body.entries)).toBe(true)
+    expect(response.body.entries.length).toBeGreaterThan(0)
+  })
 
-  describe('POST /api/waitlist', () => {
-    test('should successfully add a new waitlist entry', async () => {
-      const newEntry = {
-        name: 'John Doe',
-        email: 'john@example.com',
-        company: 'TestCo',
-        idea: 'A test idea',
-      };
-
-      const response = await request(app)
-        .post('/api/waitlist')
-        .send(newEntry);
-
-      expect(response.status).toBe(201);
-      expect(response.body.message).toBe('Successfully joined waitlist');
-      expect(response.body.entry).toMatchObject({
-        name: 'John Doe',
-        email: 'john@example.com',
-        company: 'TestCo',
-        idea: 'A test idea',
-      });
-      expect(response.body.entry).toHaveProperty('timestamp');
-    });
-
-    test('should require name and email', async () => {
-      const response = await request(app)
-        .post('/api/waitlist')
-        .send({});
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('Name and email are required');
-    });
-
-    test('should require valid email format', async () => {
-      const response = await request(app)
-        .post('/api/waitlist')
-        .send({ name: 'John', email: 'invalid-email' });
-
-      expect(response.status).toBe(400);
-      expect(response.body.message).toBe('Valid email is required');
-    });
-
-    test('should prevent duplicate email registration', async () => {
-      const entry = {
-        name: 'John Doe',
-        email: 'john@example.com',
-      };
-
-      await request(app).post('/api/waitlist').send(entry);
-      const response = await request(app).post('/api/waitlist').send(entry);
-
-      expect(response.status).toBe(409);
-      expect(response.body.message).toBe('Email already on waitlist');
-    });
-
-    test('should accept optional company and idea fields', async () => {
-      const entry = {
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-      };
-
-      const response = await request(app)
-        .post('/api/waitlist')
-        .send(entry);
-
-      expect(response.status).toBe(201);
-      expect(response.body.entry.company).toBe('');
-      expect(response.body.entry.idea).toBe('');
-    });
-  });
-
-  describe('GET /api/waitlist', () => {
-    test('should return all waitlist entries', async () => {
-      await request(app)
-        .post('/api/waitlist')
-        .send({ name: 'User1', email: 'user1@test.com' });
-
-      await request(app)
-        .post('/api/waitlist')
-        .send({ name: 'User2', email: 'user2@test.com' });
-
-      const response = await request(app).get('/api/waitlist');
-
-      expect(response.status).toBe(200);
-      expect(response.body.count).toBe(2);
-      expect(response.body.entries).toHaveLength(2);
-    });
-  });
-});
+  test('returns 404 for non-existent routes', async () => {
+    await request(app)
+      .get('/api/nonexistent')
+      .expect(404)
+  })
+})

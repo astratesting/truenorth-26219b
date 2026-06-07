@@ -1,6 +1,4 @@
-import React from 'react'
-
-const Hero: React.FC = () => {
+const Hero = () => {
   return (
     <section className="bg-gradient-to-br from-truenorth-50 to-white section-padding">
       <div className="container-max text-center">

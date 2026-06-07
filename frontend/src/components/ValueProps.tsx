@@ -1,6 +1,4 @@
-import React from 'react'
-
-const ValueProps: React.FC = () => {
+const ValueProps = () => {
   const features = [
     {
       icon: (

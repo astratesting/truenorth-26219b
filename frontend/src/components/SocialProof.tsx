@@ -1,6 +1,4 @@
-import React from 'react'
-
-const SocialProof: React.FC = () => {
+const SocialProof = () => {
   const testimonials = [
     {
       quote: "TrueNorth gave us the structure we needed to go from idea to launch-ready in just 3 weeks. The operating plan alone saved us months of trial and error.",

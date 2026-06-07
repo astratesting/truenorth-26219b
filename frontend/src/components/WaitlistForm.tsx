@@ -1,4 +1,4 @@
-import React, { useState, FormEvent } from 'react'
+import { useState, ChangeEvent, FormEvent } from 'react'
 
 interface WaitlistFormData {
   name: string
@@ -11,7 +11,7 @@ interface WaitlistFormProps {
   onSuccess?: () => void
 }
 
-const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
+function WaitlistForm({ onSuccess }: WaitlistFormProps) {
   const [formData, setFormData] = useState<WaitlistFormData>({
     name: '',
     email: '',
@@ -23,7 +23,7 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  const validateForm = (): boolean => {
+  function validateForm(): boolean {
     const newErrors: Partial<WaitlistFormData> = {}
 
     if (!formData.name.trim()) {
@@ -32,15 +32,18 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email)) {
+        newErrors.email = 'Please enter a valid email'
+      }
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     if (errors[name as keyof WaitlistFormData]) {
@@ -48,7 +51,7 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
     }
   }
 
-  const handleSubmit = async (e: FormEvent) => {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
 
     if (!validateForm()) return
@@ -92,12 +95,6 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
             <p className="text-xl text-gray-600 mb-8">
               Thanks for joining TrueNorth. We'll notify you when we launch.
             </p>
-            <button
-              onClick={() => setIsSubmitted(false)}
-              className="btn-secondary"
-            >
-              Add Another Founder
-            </button>
           </div>
         </div>
       </section>
@@ -128,9 +125,7 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-truenorth-500 focus:border-transparent transition-colors ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-truenorth-500 focus:border-transparent transition-colors ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Jane Smith"
               />
               {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
@@ -146,9 +141,7 @@ const WaitlistForm: React.FC<WaitlistFormProps> = ({ onSuccess }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-truenorth-500 focus:border-transparent transition-colors ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-truenorth-500 focus:border-transparent transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="jane@startup.com"
               />
               {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}

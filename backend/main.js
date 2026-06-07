@@ -70,9 +70,11 @@ app.get('/api/waitlist', (req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`TrueNorth backend running on port ${PORT}`);
-});
+// Start server only if this file is run directly (not required by tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`TrueNorth backend running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
